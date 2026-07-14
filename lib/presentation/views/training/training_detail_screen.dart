@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../domain/entities/training_entity.dart';
 import '../../../domain/entities/route_entity.dart';
@@ -115,40 +116,48 @@ class _TrainingDetailScreenState extends State<TrainingDetailScreen> {
                           child: CircularProgressIndicator(
                               color: AppColors.primary),
                         )
-                      : GoogleMap(
-                          initialCameraPosition: CameraPosition(
-                            target: polylinePoints.isNotEmpty
+                      : FlutterMap(
+                          options: MapOptions(
+                            initialCenter: polylinePoints.isNotEmpty
                                 ? polylinePoints.first
                                 : const LatLng(-0.1807, -78.4678),
-                            zoom: 15,
+                            initialZoom: 15,
                           ),
-                          polylines: {
+                          children: [
+                            TileLayer(
+                              urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                              subdomains: const ['a', 'b', 'c', 'd'],
+                              userAgentPackageName: 'ec.edu.espe.mortenzen_martes',
+                            ),
                             if (polylinePoints.length >= 2)
-                              Polyline(
-                                polylineId: const PolylineId('route'),
-                                points: polylinePoints,
-                                color: typeColor,
-                                width: 4,
+                              PolylineLayer(
+                                polylines: [
+                                  Polyline(
+                                    points: polylinePoints,
+                                    color: typeColor,
+                                    strokeWidth: 4,
+                                  ),
+                                ],
                               ),
-                          },
-                          markers: {
                             if (polylinePoints.isNotEmpty)
-                              Marker(
-                                markerId: const MarkerId('start'),
-                                position: polylinePoints.first,
-                                icon: BitmapDescriptor.defaultMarkerWithHue(
-                                    BitmapDescriptor.hueGreen),
+                              MarkerLayer(
+                                markers: [
+                                  Marker(
+                                    point: polylinePoints.first,
+                                    width: 20,
+                                    height: 20,
+                                    child: const Icon(Icons.circle, color: Colors.green, size: 16),
+                                  ),
+                                  if (polylinePoints.length > 1)
+                                    Marker(
+                                      point: polylinePoints.last,
+                                      width: 20,
+                                      height: 20,
+                                      child: const Icon(Icons.circle, color: Colors.red, size: 16),
+                                    ),
+                                ],
                               ),
-                            if (polylinePoints.length > 1)
-                              Marker(
-                                markerId: const MarkerId('end'),
-                                position: polylinePoints.last,
-                                icon: BitmapDescriptor.defaultMarkerWithHue(
-                                    BitmapDescriptor.hueRed),
-                              ),
-                          },
-                          zoomControlsEnabled: false,
-                          mapToolbarEnabled: false,
+                          ],
                         ),
                 ),
               ),

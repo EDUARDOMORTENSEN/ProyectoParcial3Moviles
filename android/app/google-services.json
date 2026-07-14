@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "633698613474",
+    "project_id": "movilesproyecto-71ff6",
+    "storage_bucket": "movilesproyecto-71ff6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:633698613474:android:4b4fc28f61020c39fe86bb",
+        "android_client_info": {
+          "package_name": "ec.edu.espe.mortenzen_martes"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBc4GF0JASoYowHHOZ_rxNcEL9Vqq0Cbj8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

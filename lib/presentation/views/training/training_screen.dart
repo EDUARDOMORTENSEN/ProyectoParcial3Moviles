@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../viewmodels/auth_viewmodel.dart';
@@ -15,7 +16,7 @@ class TrainingScreen extends StatefulWidget {
 
 class _TrainingScreenState extends State<TrainingScreen>
     with TickerProviderStateMixin {
-  GoogleMapController? _mapController;
+  MapController? _mapController;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
@@ -279,31 +280,32 @@ class _TrainingScreenState extends State<TrainingScreen>
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: AppColors.glassBorder),
             ),
-            child: GoogleMap(
-              initialCameraPosition: CameraPosition(
-                target: trainingVM.currentPosition != null
+            child: FlutterMap(
+              mapController: _mapController ??= MapController(),
+              options: MapOptions(
+                initialCenter: trainingVM.currentPosition != null
                     ? LatLng(trainingVM.currentPosition!.latitude,
                         trainingVM.currentPosition!.longitude)
                     : const LatLng(-0.1807, -78.4678), // Quito default
-                zoom: 16,
+                initialZoom: 16,
               ),
-              myLocationEnabled: true,
-              myLocationButtonEnabled: false,
-              zoomControlsEnabled: false,
-              mapToolbarEnabled: false,
-              polylines: {
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                  subdomains: const ['a', 'b', 'c', 'd'],
+                  userAgentPackageName: 'ec.edu.espe.mortenzen_martes',
+                ),
                 if (polylinePoints.length >= 2)
-                  Polyline(
-                    polylineId: const PolylineId('route'),
-                    points: polylinePoints,
-                    color: AppColors.primary,
-                    width: 4,
+                  PolylineLayer(
+                    polylines: [
+                      Polyline(
+                        points: polylinePoints,
+                        color: AppColors.primary,
+                        strokeWidth: 4,
+                      ),
+                    ],
                   ),
-              },
-              style: _darkMapStyle,
-              onMapCreated: (controller) {
-                _mapController = controller;
-              },
+              ],
             ),
           ),
         ),
@@ -519,22 +521,5 @@ class _TrainingScreenState extends State<TrainingScreen>
     );
   }
 
-  static const String _darkMapStyle = '''
-[
-  {"elementType": "geometry", "stylers": [{"color": "#1d2c4d"}]},
-  {"elementType": "labels.text.fill", "stylers": [{"color": "#8ec3b9"}]},
-  {"elementType": "labels.text.stroke", "stylers": [{"color": "#1a3646"}]},
-  {"featureType": "administrative.country", "elementType": "geometry.stroke", "stylers": [{"color": "#4b6878"}]},
-  {"featureType": "land_parcel", "elementType": "labels.text.fill", "stylers": [{"color": "#64779e"}]},
-  {"featureType": "poi", "elementType": "geometry", "stylers": [{"color": "#283d6a"}]},
-  {"featureType": "poi", "elementType": "labels.text.fill", "stylers": [{"color": "#6f9ba5"}]},
-  {"featureType": "poi.park", "elementType": "geometry.fill", "stylers": [{"color": "#023e58"}]},
-  {"featureType": "road", "elementType": "geometry", "stylers": [{"color": "#304a7d"}]},
-  {"featureType": "road", "elementType": "labels.text.fill", "stylers": [{"color": "#98a5be"}]},
-  {"featureType": "road.highway", "elementType": "geometry", "stylers": [{"color": "#2c6675"}]},
-  {"featureType": "transit", "elementType": "labels.text.fill", "stylers": [{"color": "#98a5be"}]},
-  {"featureType": "water", "elementType": "geometry", "stylers": [{"color": "#0e1626"}]},
-  {"featureType": "water", "elementType": "labels.text.fill", "stylers": [{"color": "#4e6d70"}]}
-]
-''';
+  // Using CartoDB Dark tile server for dark theme map style
 }

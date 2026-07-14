@@ -32,7 +32,7 @@ class WeatherData {
 class RestApiDatasource {
   static const String _baseUrl = 'https://api.openweathermap.org/data/2.5';
   // NOTE: Replace with your actual API key
-  static const String _apiKey = 'YOUR_OPENWEATHERMAP_API_KEY';
+  static const String _apiKey = 'cd998286ebcbbb2870b61a11b2c8eddb';
 
   final http.Client _client;
 
