@@ -9,9 +9,10 @@ class TrainingRepositoryImpl implements TrainingRepository {
   TrainingRepositoryImpl(this._firestoreDatasource);
 
   @override
-  Future<void> saveTraining(TrainingEntity training) {
+  Future<void> saveTraining(TrainingEntity training) async {
     final model = TrainingModel.fromEntity(training);
-    return _firestoreDatasource.saveTraining(model);
+    await _firestoreDatasource.saveTraining(model);
+    await _firestoreDatasource.updateUserStatsFromTraining(training.usuarioId, model);
   }
 
   @override

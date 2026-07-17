@@ -99,6 +99,40 @@ class FirestoreDatasource {
     return UserModel.fromFirestore(doc);
   }
 
+  Future<void> updateUserStatsFromTraining(String userId, TrainingModel training) async {
+    final batch = _firestore.batch();
+
+    // 1. Increment in users collection
+    final userRef = _firestore.collection('usuarios').doc(userId);
+    batch.update(userRef, {
+      'total_entrenamientos': FieldValue.increment(1),
+      'total_distancia': FieldValue.increment(training.distanciaKm),
+      'total_pasos': FieldValue.increment(training.pasos),
+    });
+
+    // 2. Increment in statistics collection
+    final statsRef = _firestore.collection('estadisticas').doc(userId);
+    batch.set(statsRef, {
+      'semana_actual': {
+        'entrenamientos': FieldValue.increment(1),
+        'distancia_total': FieldValue.increment(training.distanciaKm),
+        'pasos_total': FieldValue.increment(training.pasos),
+        'tiempo_total': FieldValue.increment(training.duracionSegundos),
+      },
+      'mes_actual': {
+        'entrenamientos': FieldValue.increment(1),
+        'distancia_total': FieldValue.increment(training.distanciaKm),
+        'pasos_total': FieldValue.increment(training.pasos),
+        'tiempo_total': FieldValue.increment(training.duracionSegundos),
+      }
+    }, SetOptions(merge: true));
+
+    await batch.commit();
+
+    // 3. Update bests (requires reading the current stats, but for now we skip or do it separately)
+    // For simplicity, we just use the atomic increments for the totals which were broken.
+  }
+
   Future<void> updateUser(String userId, Map<String, dynamic> data) async {
     await _firestore.collection('usuarios').doc(userId).update(data);
   }

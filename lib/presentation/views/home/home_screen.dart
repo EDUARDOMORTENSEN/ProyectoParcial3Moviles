@@ -32,6 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (userId != null) {
       context.read<TrainingViewModel>().loadHistory(userId);
       context.read<StatisticsViewModel>().loadStatistics(userId);
+      context.read<RankingViewModel>().loadRanking();
     }
   }
 
@@ -62,9 +63,10 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
-          onTap: (index) {
+          onTap: (index) async {
             if (index == 1) {
-              Navigator.pushNamed(context, AppRoutes.training);
+              await Navigator.pushNamed(context, AppRoutes.training);
+              _loadData();
               return;
             }
             setState(() => _currentIndex = index);
@@ -166,7 +168,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // Start training button
           GestureDetector(
-            onTap: () => Navigator.pushNamed(context, AppRoutes.training),
+            onTap: () async {
+              await Navigator.pushNamed(context, AppRoutes.training);
+              _loadData();
+            },
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
