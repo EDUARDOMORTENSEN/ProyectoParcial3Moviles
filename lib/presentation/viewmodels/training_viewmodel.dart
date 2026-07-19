@@ -33,6 +33,7 @@ class TrainingViewModel extends ChangeNotifier {
   double _calories = 0.0;
   Position? _currentPosition;
   WeatherData? _weatherData;
+  bool _weatherFetched = false;
   List<TrainingEntity> _history = [];
   bool _isLoading = false;
   String? _errorMessage;
@@ -100,6 +101,7 @@ class TrainingViewModel extends ChangeNotifier {
       _currentSpeed = 0.0;
       _maxSpeed = 0.0;
       _calories = 0.0;
+      _weatherFetched = false;
       notifyListeners();
 
       // Start location tracking
@@ -121,6 +123,10 @@ class TrainingViewModel extends ChangeNotifier {
       _positionSub = _locationService.positionStream.listen((position) {
         _currentPosition = position;
         notifyListeners();
+        if (!_weatherFetched) {
+          _weatherFetched = true;
+          _fetchWeather();
+        }
       });
 
       // Listen to distance updates
@@ -141,9 +147,6 @@ class TrainingViewModel extends ChangeNotifier {
         _steps = steps;
         notifyListeners();
       });
-
-      // Fetch weather
-      _fetchWeather();
     } catch (e) {
       _errorMessage = e.toString();
       _state = TrainingState.idle;
@@ -284,6 +287,7 @@ class TrainingViewModel extends ChangeNotifier {
     _distanceSub?.cancel();
     _speedSub?.cancel();
     _stepSub?.cancel();
+    _weatherFetched = false;
     _state = TrainingState.idle;
     notifyListeners();
   }
