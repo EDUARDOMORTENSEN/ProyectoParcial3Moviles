@@ -57,6 +57,11 @@ class LocationService {
   }
 
   void _processPosition(Position position) {
+    // Skip inaccurate fixes (GPS jitter when stationary would otherwise
+    // accumulate phantom distance). 10m is a permissive gate; tighten if
+    // indoor tracking still drifts.
+    if (position.accuracy > 10) return;
+
     final routePoint = RoutePoint(
       latitud: position.latitude,
       longitud: position.longitude,
@@ -72,8 +77,12 @@ class LocationService {
         position.latitude,
         position.longitude,
       );
-      _totalDistance += distance;
-      _distanceController.add(_totalDistance);
+      // Ignore movement smaller than the fix's accuracy radius — it's noise,
+      // not real displacement.
+      if (distance >= position.accuracy) {
+        _totalDistance += distance;
+        _distanceController.add(_totalDistance);
+      }
     }
 
     // Speed in km/h
