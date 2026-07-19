@@ -24,11 +24,24 @@ class StepCounterService {
     _stepCount = 0;
     _lastStepTime = null;
     _isPeak = false;
+    _startListening();
+  }
 
+  void _startListening() {
     _subscription =
         _accelerometerDatasource.getAccelerometerStream().listen((data) {
       _detectStep(data.magnitude);
     });
+  }
+
+  void pause() {
+    _subscription?.cancel();
+    _subscription = null;
+  }
+
+  void resume() {
+    if (_subscription != null) return;
+    _startListening();
   }
 
   void _detectStep(double magnitude) {

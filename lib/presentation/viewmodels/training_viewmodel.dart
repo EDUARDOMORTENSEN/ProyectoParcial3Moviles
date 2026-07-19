@@ -153,11 +153,15 @@ class TrainingViewModel extends ChangeNotifier {
 
   void pauseTraining() {
     _state = TrainingState.paused;
+    _locationService.pause();
+    _stepCounterService.pause();
     notifyListeners();
   }
 
   void resumeTraining() {
     _state = TrainingState.active;
+    _locationService.resume();
+    _stepCounterService.resume();
     notifyListeners();
   }
 

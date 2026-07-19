@@ -35,12 +35,25 @@ class LocationService {
     _lastPosition = null;
     _currentSpeed = 0.0;
     _maxSpeed = 0.0;
+    _startListening();
+  }
 
+  void _startListening() {
     _positionSubscription = _gpsDatasource.getPositionStream().listen(
       (position) {
         _processPosition(position);
       },
     );
+  }
+
+  void pause() {
+    _positionSubscription?.cancel();
+    _positionSubscription = null;
+  }
+
+  void resume() {
+    if (_positionSubscription != null) return;
+    _startListening();
   }
 
   void _processPosition(Position position) {
