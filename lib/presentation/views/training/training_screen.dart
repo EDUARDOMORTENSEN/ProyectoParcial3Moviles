@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../viewmodels/auth_viewmodel.dart';
@@ -16,9 +18,11 @@ class TrainingScreen extends StatefulWidget {
 
 class _TrainingScreenState extends State<TrainingScreen>
     with TickerProviderStateMixin {
-  MapController? _mapController;
+  final MapController _mapController = MapController();
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  StreamSubscription<Position>? _positionSub;
+  bool _mapReady = false;
 
   @override
   void initState() {
@@ -31,12 +35,24 @@ class _TrainingScreenState extends State<TrainingScreen>
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+
+    // Recenter the map on each GPS fix so the trail stays on-screen.
+    final vm = context.read<TrainingViewModel>();
+    _positionSub = vm.positionStream.listen((position) {
+      if (_mapReady) {
+        _mapController.move(
+          LatLng(position.latitude, position.longitude),
+          _mapController.camera.zoom,
+        );
+      }
+    });
   }
 
   @override
   void dispose() {
+    _positionSub?.cancel();
     _pulseController.dispose();
-    _mapController?.dispose();
+    _mapController.dispose();
     super.dispose();
   }
 
@@ -283,13 +299,14 @@ class _TrainingScreenState extends State<TrainingScreen>
               border: Border.all(color: AppColors.glassBorder),
             ),
             child: FlutterMap(
-              mapController: _mapController ??= MapController(),
+              mapController: _mapController,
               options: MapOptions(
                 initialCenter: trainingVM.currentPosition != null
                     ? LatLng(trainingVM.currentPosition!.latitude,
                         trainingVM.currentPosition!.longitude)
                     : const LatLng(-0.1807, -78.4678), // Quito default
                 initialZoom: 16,
+                onMapReady: () => _mapReady = true,
               ),
               children: [
                 TileLayer(

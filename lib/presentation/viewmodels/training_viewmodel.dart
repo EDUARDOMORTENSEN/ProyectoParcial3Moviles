@@ -76,6 +76,7 @@ class TrainingViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   List<RoutePoint> get routePoints => _locationService.routePoints;
+  Stream<Position> get positionStream => _locationService.positionStream;
 
   String get formattedTime {
     final hours = _elapsedSeconds ~/ 3600;
