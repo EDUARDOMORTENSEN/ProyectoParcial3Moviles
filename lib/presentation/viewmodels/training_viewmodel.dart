@@ -30,6 +30,7 @@ class TrainingViewModel extends ChangeNotifier {
   double _weightKg = 70.0;
   WeatherData? _weatherData;
   bool _weatherFetched = false;
+  bool _gpsReady = false;
   List<TrainingEntity> _history = [];
   bool _isLoading = false;
   String? _errorMessage;
@@ -62,6 +63,9 @@ class TrainingViewModel extends ChangeNotifier {
   double get distanceKm => _locationService.totalDistance / 1000;
   double get currentSpeed => _locationService.currentSpeed;
   double get maxSpeed => _locationService.maxSpeed;
+  /// True once the first GPS fix has arrived and the timer has started.
+  /// UI uses this to show a "Esperando GPS…" indicator during cold start.
+  bool get gpsReady => _gpsReady;
   /// True when a GPS fix has arrived in the last 10s. Used by the UI to
   /// show "0.0" instead of a stale speed value when the user is stationary
   /// (distanceFilter suppresses fixes, so the last speed would otherwise
@@ -97,10 +101,11 @@ class TrainingViewModel extends ChangeNotifier {
     try {
       _weightKg = weightKg ?? 70.0;
       _state = TrainingState.active;
-      _startTime = DateTime.now();
+      _startTime = null;
       _elapsedSeconds = 0;
       _calories = 0.0;
       _weatherFetched = false;
+      _gpsReady = false;
       notifyListeners();
 
       // Start location tracking
@@ -109,19 +114,25 @@ class TrainingViewModel extends ChangeNotifier {
       // Start step counter
       _stepCounterService.startCounting();
 
-      // Start timer
-      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (_state == TrainingState.active) {
-          _elapsedSeconds++;
-          _updateCalories();
-          notifyListeners();
-        }
-      });
-
       // Position stream fires on every fix — that's also when distance
       // and speed change in LocationService, so this single subscription
       // covers all three for the UI refresh.
       _positionSub = _locationService.positionStream.listen((position) {
+        // Defer timer + _startTime until the first GPS fix: cold start can
+        // take 10-30s, and starting the clock at t=0 would inflate
+        // duracionSegundos and corrupt velocidadPromedio with warmup time
+        // the user wasn't actually moving for.
+        if (!_gpsReady) {
+          _gpsReady = true;
+          _startTime = DateTime.now();
+          _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+            if (_state == TrainingState.active) {
+              _elapsedSeconds++;
+              _updateCalories();
+              notifyListeners();
+            }
+          });
+        }
         notifyListeners();
         if (!_weatherFetched) {
           _weatherFetched = true;
@@ -161,6 +172,7 @@ class TrainingViewModel extends ChangeNotifier {
     _stepCounterService.stopCounting();
     _positionSub?.cancel();
     _stepSub?.cancel();
+    _gpsReady = false;
     notifyListeners();
 
     final trainingId = const Uuid().v4();
@@ -271,6 +283,7 @@ class TrainingViewModel extends ChangeNotifier {
     _positionSub?.cancel();
     _stepSub?.cancel();
     _weatherFetched = false;
+    _gpsReady = false;
     _state = TrainingState.idle;
     notifyListeners();
   }

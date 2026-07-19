@@ -374,6 +374,31 @@ class _TrainingScreenState extends State<TrainingScreen>
                         letterSpacing: 4,
                       ),
                 ),
+                if (!trainingVM.gpsReady &&
+                    trainingVM.state == TrainingState.active) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primary.withValues(alpha: 0.8),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Esperando GPS...',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                            ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 16),
                 // Stats row
                 Row(
