@@ -31,6 +31,7 @@ class TrainingViewModel extends ChangeNotifier {
   double _currentSpeed = 0.0;
   double _maxSpeed = 0.0;
   double _calories = 0.0;
+  double _weightKg = 70.0;
   Position? _currentPosition;
   WeatherData? _weatherData;
   bool _weatherFetched = false;
@@ -91,8 +92,9 @@ class TrainingViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> startTraining() async {
+  Future<void> startTraining({double? weightKg}) async {
     try {
+      _weightKg = weightKg ?? 70.0;
       _state = TrainingState.active;
       _startTime = DateTime.now();
       _elapsedSeconds = 0;
@@ -262,7 +264,7 @@ class TrainingViewModel extends ChangeNotifier {
         met = 5.0;
     }
     // Calories = MET × weight(kg) × time(hours)
-    _calories = met * 70 * (_elapsedSeconds / 3600); // Assume 70kg default
+    _calories = met * _weightKg * (_elapsedSeconds / 3600);
   }
 
   Future<void> _fetchWeather() async {

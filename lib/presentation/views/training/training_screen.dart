@@ -144,7 +144,9 @@ class _TrainingScreenState extends State<TrainingScreen>
           ScaleTransition(
             scale: _pulseAnimation,
             child: GestureDetector(
-              onTap: () => trainingVM.startTraining(),
+              onTap: () => trainingVM.startTraining(
+              weightKg: context.read<AuthViewModel>().currentUser?.peso,
+            ),
               child: Container(
                 width: 140,
                 height: 140,
