@@ -324,6 +324,26 @@ class _TrainingScreenState extends State<TrainingScreen>
                       ),
                     ],
                   ),
+                if (trainingVM.currentPosition != null)
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: LatLng(
+                          trainingVM.currentPosition!.latitude,
+                          trainingVM.currentPosition!.longitude,
+                        ),
+                        width: 24,
+                        height: 24,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 3),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
               ],
             ),
           ),
