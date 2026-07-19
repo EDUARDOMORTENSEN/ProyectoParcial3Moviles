@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 import '../datasources/local/gps_datasource.dart';
+import 'foreground_location_controller.dart';
 import '../../domain/entities/route_entity.dart';
 
 class LocationService {
@@ -35,6 +36,7 @@ class LocationService {
     _lastPosition = null;
     _currentSpeed = 0.0;
     _maxSpeed = 0.0;
+    await ForegroundLocationController.start();
     _startListening();
   }
 
@@ -99,6 +101,7 @@ class LocationService {
   void stopTracking() {
     _positionSubscription?.cancel();
     _positionSubscription = null;
+    ForegroundLocationController.stop();
   }
 
   void dispose() {

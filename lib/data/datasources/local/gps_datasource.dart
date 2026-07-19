@@ -1,12 +1,17 @@
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../../core/errors/exceptions.dart';
 
 class GpsDatasource {
   StreamSubscription<Position>? _positionSubscription;
 
-  /// Check and request location permissions
+  /// Check and request location + notification permissions
   Future<bool> checkPermissions() async {
+    // Notifications: required by the foreground service notification on
+    // Android 13+. Non-Android platforms ignore this.
+    await Permission.notification.request();
+
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       throw LocationException('Los servicios de ubicación están desactivados');
