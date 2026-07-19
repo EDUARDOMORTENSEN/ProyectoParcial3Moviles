@@ -1,37 +1,44 @@
 import 'dart:async';
-import '../datasources/local/sensor_datasource.dart';
+import 'package:pedometer/pedometer.dart';
 
-/// Step counter using accelerometer peak detection algorithm
+/// Step counter backed by the platform hardware step counter
+/// (Android TYPE_STEP_COUNTER / iOS CMPedometer). The platform reports
+/// cumulative steps since device boot; we capture a baseline at start and
+/// subtract it so the workout reports steps taken during the workout only.
+///
+/// Hardware-based counting runs on the coprocessor and is unaffected by
+/// screen state, Dart isolate throttling, or app lifecycle, unlike the
+/// previous software peak-detection on the accelerometer stream.
 class StepCounterService {
-  final AccelerometerDatasource _accelerometerDatasource;
-
-  StreamSubscription? _subscription;
+  Stream<StepCount>? _stepCountStream;
+  StreamSubscription<StepCount>? _subscription;
   int _stepCount = 0;
+  int _baseline = 0;
   final _stepController = StreamController<int>.broadcast();
-
-  // Step detection parameters
-  static const double _stepThreshold = 12.0; // magnitude threshold
-  static const int _minStepInterval = 250; // minimum ms between steps
-  DateTime? _lastStepTime;
-  bool _isPeak = false;
-
-  StepCounterService(this._accelerometerDatasource);
 
   int get stepCount => _stepCount;
   Stream<int> get stepStream => _stepController.stream;
 
   void startCounting() {
     _stepCount = 0;
-    _lastStepTime = null;
-    _isPeak = false;
+    _baseline = 0;
     _startListening();
   }
 
   void _startListening() {
-    _subscription =
-        _accelerometerDatasource.getAccelerometerStream().listen((data) {
-      _detectStep(data.magnitude);
-    });
+    _stepCountStream = Pedometer.stepCountStream;
+    _subscription = _stepCountStream?.listen(
+      (event) {
+        if (_baseline == 0) {
+          _baseline = event.steps;
+        }
+        _stepCount = event.steps - _baseline;
+        _stepController.add(_stepCount);
+      },
+      onError: (e) {
+        // Sensor unavailable or permission denied — leave count at 0.
+      },
+    );
   }
 
   void pause() {
@@ -44,23 +51,6 @@ class StepCounterService {
     _startListening();
   }
 
-  void _detectStep(double magnitude) {
-    final now = DateTime.now();
-
-    if (magnitude > _stepThreshold && !_isPeak) {
-      _isPeak = true;
-
-      if (_lastStepTime == null ||
-          now.difference(_lastStepTime!).inMilliseconds > _minStepInterval) {
-        _stepCount++;
-        _lastStepTime = now;
-        _stepController.add(_stepCount);
-      }
-    } else if (magnitude < _stepThreshold - 2) {
-      _isPeak = false;
-    }
-  }
-
   void stopCounting() {
     _subscription?.cancel();
     _subscription = null;
@@ -68,8 +58,7 @@ class StepCounterService {
 
   void reset() {
     _stepCount = 0;
-    _lastStepTime = null;
-    _isPeak = false;
+    _baseline = 0;
   }
 
   void dispose() {

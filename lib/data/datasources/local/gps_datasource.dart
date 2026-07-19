@@ -12,6 +12,10 @@ class GpsDatasource {
     // Android 13+. Non-Android platforms ignore this.
     await Permission.notification.request();
 
+    // Activity recognition: required by the hardware step counter
+    // (pedometer) on Android 10+. Without it the pedometer stream throws.
+    await Permission.activityRecognition.request();
+
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       throw LocationException('Los servicios de ubicación están desactivados');
