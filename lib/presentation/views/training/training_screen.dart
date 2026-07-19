@@ -403,7 +403,9 @@ class _TrainingScreenState extends State<TrainingScreen>
                     ),
                     _buildLiveStat(
                       Icons.speed,
-                      trainingVM.currentSpeed.toStringAsFixed(1),
+                      trainingVM.isMoving
+                          ? trainingVM.currentSpeed.toStringAsFixed(1)
+                          : '0.0',
                       AppStrings.kmh,
                       AppColors.warning,
                     ),

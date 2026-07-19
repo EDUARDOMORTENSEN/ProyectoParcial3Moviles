@@ -26,13 +26,8 @@ class TrainingViewModel extends ChangeNotifier {
   String _trainingType = 'correr';
   DateTime? _startTime;
   int _elapsedSeconds = 0;
-  int _steps = 0;
-  double _distanceKm = 0.0;
-  double _currentSpeed = 0.0;
-  double _maxSpeed = 0.0;
   double _calories = 0.0;
   double _weightKg = 70.0;
-  Position? _currentPosition;
   WeatherData? _weatherData;
   bool _weatherFetched = false;
   List<TrainingEntity> _history = [];
@@ -41,8 +36,6 @@ class TrainingViewModel extends ChangeNotifier {
 
   Timer? _timer;
   StreamSubscription? _positionSub;
-  StreamSubscription? _distanceSub;
-  StreamSubscription? _speedSub;
   StreamSubscription? _stepSub;
 
   TrainingViewModel({
@@ -65,12 +58,19 @@ class TrainingViewModel extends ChangeNotifier {
   TrainingState get state => _state;
   String get trainingType => _trainingType;
   int get elapsedSeconds => _elapsedSeconds;
-  int get steps => _steps;
-  double get distanceKm => _distanceKm;
-  double get currentSpeed => _currentSpeed;
-  double get maxSpeed => _maxSpeed;
+  int get steps => _stepCounterService.stepCount;
+  double get distanceKm => _locationService.totalDistance / 1000;
+  double get currentSpeed => _locationService.currentSpeed;
+  double get maxSpeed => _locationService.maxSpeed;
+  /// True when a GPS fix has arrived in the last 10s. Used by the UI to
+  /// show "0.0" instead of a stale speed value when the user is stationary
+  /// (distanceFilter suppresses fixes, so the last speed would otherwise
+  /// be displayed indefinitely). _currentSpeed is left untouched so
+  /// derivation on resume still works correctly.
+  bool get isMoving => _locationService.lastFixTime != null &&
+      DateTime.now().difference(_locationService.lastFixTime!).inSeconds < 10;
   double get calories => _calories;
-  Position? get currentPosition => _currentPosition;
+  Position? get currentPosition => _locationService.currentPosition;
   WeatherData? get weatherData => _weatherData;
   List<TrainingEntity> get history => _history;
   bool get isLoading => _isLoading;
@@ -99,10 +99,6 @@ class TrainingViewModel extends ChangeNotifier {
       _state = TrainingState.active;
       _startTime = DateTime.now();
       _elapsedSeconds = 0;
-      _steps = 0;
-      _distanceKm = 0.0;
-      _currentSpeed = 0.0;
-      _maxSpeed = 0.0;
       _calories = 0.0;
       _weatherFetched = false;
       notifyListeners();
@@ -122,9 +118,10 @@ class TrainingViewModel extends ChangeNotifier {
         }
       });
 
-      // Listen to position updates
+      // Position stream fires on every fix — that's also when distance
+      // and speed change in LocationService, so this single subscription
+      // covers all three for the UI refresh.
       _positionSub = _locationService.positionStream.listen((position) {
-        _currentPosition = position;
         notifyListeners();
         if (!_weatherFetched) {
           _weatherFetched = true;
@@ -132,22 +129,8 @@ class TrainingViewModel extends ChangeNotifier {
         }
       });
 
-      // Listen to distance updates
-      _distanceSub = _locationService.distanceStream.listen((distance) {
-        _distanceKm = distance / 1000; // meters to km
-        notifyListeners();
-      });
-
-      // Listen to speed updates
-      _speedSub = _locationService.speedStream.listen((speed) {
-        _currentSpeed = speed;
-        if (speed > _maxSpeed) _maxSpeed = speed;
-        notifyListeners();
-      });
-
       // Listen to step updates
-      _stepSub = _stepCounterService.stepStream.listen((steps) {
-        _steps = steps;
+      _stepSub = _stepCounterService.stepStream.listen((_) {
         notifyListeners();
       });
     } catch (e) {
@@ -177,8 +160,6 @@ class TrainingViewModel extends ChangeNotifier {
     _locationService.stopTracking();
     _stepCounterService.stopCounting();
     _positionSub?.cancel();
-    _distanceSub?.cancel();
-    _speedSub?.cancel();
     _stepSub?.cancel();
     notifyListeners();
 
@@ -186,7 +167,7 @@ class TrainingViewModel extends ChangeNotifier {
     final routeId = const Uuid().v4();
 
     final avgSpeed = _elapsedSeconds > 0
-        ? (_distanceKm / (_elapsedSeconds / 3600))
+        ? (distanceKm / (_elapsedSeconds / 3600))
         : 0.0;
 
     final training = TrainingEntity(
@@ -196,11 +177,11 @@ class TrainingViewModel extends ChangeNotifier {
       fechaInicio: _startTime ?? DateTime.now(),
       fechaFin: DateTime.now(),
       duracionSegundos: _elapsedSeconds,
-      distanciaKm: _distanceKm,
-      pasos: _steps,
+      distanciaKm: distanceKm,
+      pasos: steps,
       calorias: _calories,
       velocidadPromedio: avgSpeed,
-      velocidadMaxima: _maxSpeed,
+      velocidadMaxima: maxSpeed,
       rutaId: routeId,
     );
 
@@ -270,10 +251,11 @@ class TrainingViewModel extends ChangeNotifier {
 
   Future<void> _fetchWeather() async {
     try {
-      if (_currentPosition != null) {
+      final pos = currentPosition;
+      if (pos != null) {
         _weatherData = await _restApiDatasource.getWeather(
-          _currentPosition!.latitude,
-          _currentPosition!.longitude,
+          pos.latitude,
+          pos.longitude,
         );
         notifyListeners();
       }
@@ -287,8 +269,6 @@ class TrainingViewModel extends ChangeNotifier {
     _locationService.stopTracking();
     _stepCounterService.stopCounting();
     _positionSub?.cancel();
-    _distanceSub?.cancel();
-    _speedSub?.cancel();
     _stepSub?.cancel();
     _weatherFetched = false;
     _state = TrainingState.idle;
@@ -299,8 +279,6 @@ class TrainingViewModel extends ChangeNotifier {
   void dispose() {
     _timer?.cancel();
     _positionSub?.cancel();
-    _distanceSub?.cancel();
-    _speedSub?.cancel();
     _stepSub?.cancel();
     super.dispose();
   }

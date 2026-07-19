@@ -11,29 +11,29 @@ class LocationService {
   final List<RoutePoint> _routePoints = [];
   double _totalDistance = 0.0;
   Position? _lastPosition;
+  DateTime? _lastFixTime;
   double _currentSpeed = 0.0;
   double _maxSpeed = 0.0;
 
   final _positionController = StreamController<Position>.broadcast();
-  final _distanceController = StreamController<double>.broadcast();
-  final _speedController = StreamController<double>.broadcast();
 
   LocationService(this._gpsDatasource);
 
   List<RoutePoint> get routePoints => List.unmodifiable(_routePoints);
   double get totalDistance => _totalDistance;
+  Position? get currentPosition => _lastPosition;
+  DateTime? get lastFixTime => _lastFixTime;
   double get currentSpeed => _currentSpeed;
   double get maxSpeed => _maxSpeed;
 
   Stream<Position> get positionStream => _positionController.stream;
-  Stream<double> get distanceStream => _distanceController.stream;
-  Stream<double> get speedStream => _speedController.stream;
 
   Future<void> startTracking() async {
     await _gpsDatasource.checkPermissions();
     _routePoints.clear();
     _totalDistance = 0.0;
     _lastPosition = null;
+    _lastFixTime = null;
     _currentSpeed = 0.0;
     _maxSpeed = 0.0;
     await ForegroundLocationController.start();
@@ -64,37 +64,39 @@ class LocationService {
     // indoor tracking still drifts.
     if (position.accuracy > 10) return;
 
-    final routePoint = RoutePoint(
+    final now = DateTime.now();
+    _routePoints.add(RoutePoint(
       latitud: position.latitude,
       longitud: position.longitude,
       altitud: position.altitude,
-      timestamp: DateTime.now(),
-    );
-    _routePoints.add(routePoint);
+      timestamp: now,
+    ));
 
-    if (_lastPosition != null) {
+    if (_lastPosition != null && _lastFixTime != null) {
       final distance = _gpsDatasource.calculateDistance(
         _lastPosition!.latitude,
         _lastPosition!.longitude,
         position.latitude,
         position.longitude,
       );
-      // Ignore movement smaller than the fix's accuracy radius — it's noise,
-      // not real displacement.
+      // Ignore movement smaller than the fix's accuracy radius — it's
+      // noise, not real displacement. The same gate protects speed: a
+      // noise fix can't poison _currentSpeed or _maxSpeed.
       if (distance >= position.accuracy) {
         _totalDistance += distance;
-        _distanceController.add(_totalDistance);
+        final dtSec = now.difference(_lastFixTime!).inMicroseconds / 1e6;
+        if (dtSec > 0) {
+          // Derive speed from distance/time between consecutive fixes
+          // instead of trusting position.speed, which is 0 or garbage on
+          // some Android devices. m/s → km/h.
+          _currentSpeed = (distance / dtSec) * 3.6;
+          if (_currentSpeed > _maxSpeed) _maxSpeed = _currentSpeed;
+        }
       }
     }
 
-    // Speed in km/h
-    _currentSpeed = position.speed * 3.6; // m/s to km/h
-    if (_currentSpeed > _maxSpeed) {
-      _maxSpeed = _currentSpeed;
-    }
-    _speedController.add(_currentSpeed);
-
     _lastPosition = position;
+    _lastFixTime = now;
     _positionController.add(position);
   }
 
@@ -107,7 +109,5 @@ class LocationService {
   void dispose() {
     stopTracking();
     _positionController.close();
-    _distanceController.close();
-    _speedController.close();
   }
 }
