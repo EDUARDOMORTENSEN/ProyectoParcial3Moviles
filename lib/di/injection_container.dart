@@ -87,7 +87,7 @@ class InjectionContainer {
 
   void _initServices() {
     locationService = LocationService(gpsDatasource);
-    stepCounterService = StepCounterService(accelerometerDatasource);
+    stepCounterService = StepCounterService();
   }
 }
 

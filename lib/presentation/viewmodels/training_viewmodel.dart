@@ -26,21 +26,17 @@ class TrainingViewModel extends ChangeNotifier {
   String _trainingType = 'correr';
   DateTime? _startTime;
   int _elapsedSeconds = 0;
-  int _steps = 0;
-  double _distanceKm = 0.0;
-  double _currentSpeed = 0.0;
-  double _maxSpeed = 0.0;
   double _calories = 0.0;
-  Position? _currentPosition;
+  double _weightKg = 70.0;
   WeatherData? _weatherData;
+  bool _weatherFetched = false;
+  bool _gpsReady = false;
   List<TrainingEntity> _history = [];
   bool _isLoading = false;
   String? _errorMessage;
 
   Timer? _timer;
   StreamSubscription? _positionSub;
-  StreamSubscription? _distanceSub;
-  StreamSubscription? _speedSub;
   StreamSubscription? _stepSub;
 
   TrainingViewModel({
@@ -63,17 +59,28 @@ class TrainingViewModel extends ChangeNotifier {
   TrainingState get state => _state;
   String get trainingType => _trainingType;
   int get elapsedSeconds => _elapsedSeconds;
-  int get steps => _steps;
-  double get distanceKm => _distanceKm;
-  double get currentSpeed => _currentSpeed;
-  double get maxSpeed => _maxSpeed;
+  int get steps => _stepCounterService.stepCount;
+  double get distanceKm => _locationService.totalDistance / 1000;
+  double get currentSpeed => _locationService.currentSpeed;
+  double get maxSpeed => _locationService.maxSpeed;
+  /// True once the first GPS fix has arrived and the timer has started.
+  /// UI uses this to show a "Esperando GPS…" indicator during cold start.
+  bool get gpsReady => _gpsReady;
+  /// True when a GPS fix has arrived in the last 10s. Used by the UI to
+  /// show "0.0" instead of a stale speed value when the user is stationary
+  /// (distanceFilter suppresses fixes, so the last speed would otherwise
+  /// be displayed indefinitely). _currentSpeed is left untouched so
+  /// derivation on resume still works correctly.
+  bool get isMoving => _locationService.lastFixTime != null &&
+      DateTime.now().difference(_locationService.lastFixTime!).inSeconds < 10;
   double get calories => _calories;
-  Position? get currentPosition => _currentPosition;
+  Position? get currentPosition => _locationService.currentPosition;
   WeatherData? get weatherData => _weatherData;
   List<TrainingEntity> get history => _history;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   List<RoutePoint> get routePoints => _locationService.routePoints;
+  Stream<Position> get positionStream => _locationService.positionStream;
 
   String get formattedTime {
     final hours = _elapsedSeconds ~/ 3600;
@@ -90,16 +97,15 @@ class TrainingViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> startTraining() async {
+  Future<void> startTraining({double? weightKg}) async {
     try {
+      _weightKg = weightKg ?? 70.0;
       _state = TrainingState.active;
-      _startTime = DateTime.now();
+      _startTime = null;
       _elapsedSeconds = 0;
-      _steps = 0;
-      _distanceKm = 0.0;
-      _currentSpeed = 0.0;
-      _maxSpeed = 0.0;
       _calories = 0.0;
+      _weatherFetched = false;
+      _gpsReady = false;
       notifyListeners();
 
       // Start location tracking
@@ -108,42 +114,36 @@ class TrainingViewModel extends ChangeNotifier {
       // Start step counter
       _stepCounterService.startCounting();
 
-      // Start timer
-      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (_state == TrainingState.active) {
-          _elapsedSeconds++;
-          _updateCalories();
-          notifyListeners();
+      // Position stream fires on every fix — that's also when distance
+      // and speed change in LocationService, so this single subscription
+      // covers all three for the UI refresh.
+      _positionSub = _locationService.positionStream.listen((position) {
+        // Defer timer + _startTime until the first GPS fix: cold start can
+        // take 10-30s, and starting the clock at t=0 would inflate
+        // duracionSegundos and corrupt velocidadPromedio with warmup time
+        // the user wasn't actually moving for.
+        if (!_gpsReady) {
+          _gpsReady = true;
+          _startTime = DateTime.now();
+          _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+            if (_state == TrainingState.active) {
+              _elapsedSeconds++;
+              _updateCalories();
+              notifyListeners();
+            }
+          });
+        }
+        notifyListeners();
+        if (!_weatherFetched) {
+          _weatherFetched = true;
+          _fetchWeather();
         }
       });
 
-      // Listen to position updates
-      _positionSub = _locationService.positionStream.listen((position) {
-        _currentPosition = position;
-        notifyListeners();
-      });
-
-      // Listen to distance updates
-      _distanceSub = _locationService.distanceStream.listen((distance) {
-        _distanceKm = distance / 1000; // meters to km
-        notifyListeners();
-      });
-
-      // Listen to speed updates
-      _speedSub = _locationService.speedStream.listen((speed) {
-        _currentSpeed = speed;
-        if (speed > _maxSpeed) _maxSpeed = speed;
-        notifyListeners();
-      });
-
       // Listen to step updates
-      _stepSub = _stepCounterService.stepStream.listen((steps) {
-        _steps = steps;
+      _stepSub = _stepCounterService.stepStream.listen((_) {
         notifyListeners();
       });
-
-      // Fetch weather
-      _fetchWeather();
     } catch (e) {
       _errorMessage = e.toString();
       _state = TrainingState.idle;
@@ -153,11 +153,15 @@ class TrainingViewModel extends ChangeNotifier {
 
   void pauseTraining() {
     _state = TrainingState.paused;
+    _locationService.pause();
+    _stepCounterService.pause();
     notifyListeners();
   }
 
   void resumeTraining() {
     _state = TrainingState.active;
+    _locationService.resume();
+    _stepCounterService.resume();
     notifyListeners();
   }
 
@@ -167,16 +171,15 @@ class TrainingViewModel extends ChangeNotifier {
     _locationService.stopTracking();
     _stepCounterService.stopCounting();
     _positionSub?.cancel();
-    _distanceSub?.cancel();
-    _speedSub?.cancel();
     _stepSub?.cancel();
+    _gpsReady = false;
     notifyListeners();
 
     final trainingId = const Uuid().v4();
     final routeId = const Uuid().v4();
 
     final avgSpeed = _elapsedSeconds > 0
-        ? (_distanceKm / (_elapsedSeconds / 3600))
+        ? (distanceKm / (_elapsedSeconds / 3600))
         : 0.0;
 
     final training = TrainingEntity(
@@ -186,11 +189,11 @@ class TrainingViewModel extends ChangeNotifier {
       fechaInicio: _startTime ?? DateTime.now(),
       fechaFin: DateTime.now(),
       duracionSegundos: _elapsedSeconds,
-      distanciaKm: _distanceKm,
-      pasos: _steps,
+      distanciaKm: distanceKm,
+      pasos: steps,
       calorias: _calories,
       velocidadPromedio: avgSpeed,
-      velocidadMaxima: _maxSpeed,
+      velocidadMaxima: maxSpeed,
       rutaId: routeId,
     );
 
@@ -255,15 +258,16 @@ class TrainingViewModel extends ChangeNotifier {
         met = 5.0;
     }
     // Calories = MET × weight(kg) × time(hours)
-    _calories = met * 70 * (_elapsedSeconds / 3600); // Assume 70kg default
+    _calories = met * _weightKg * (_elapsedSeconds / 3600);
   }
 
   Future<void> _fetchWeather() async {
     try {
-      if (_currentPosition != null) {
+      final pos = currentPosition;
+      if (pos != null) {
         _weatherData = await _restApiDatasource.getWeather(
-          _currentPosition!.latitude,
-          _currentPosition!.longitude,
+          pos.latitude,
+          pos.longitude,
         );
         notifyListeners();
       }
@@ -277,9 +281,9 @@ class TrainingViewModel extends ChangeNotifier {
     _locationService.stopTracking();
     _stepCounterService.stopCounting();
     _positionSub?.cancel();
-    _distanceSub?.cancel();
-    _speedSub?.cancel();
     _stepSub?.cancel();
+    _weatherFetched = false;
+    _gpsReady = false;
     _state = TrainingState.idle;
     notifyListeners();
   }
@@ -288,8 +292,6 @@ class TrainingViewModel extends ChangeNotifier {
   void dispose() {
     _timer?.cancel();
     _positionSub?.cancel();
-    _distanceSub?.cancel();
-    _speedSub?.cancel();
     _stepSub?.cancel();
     super.dispose();
   }
