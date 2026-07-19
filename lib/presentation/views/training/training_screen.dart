@@ -313,6 +313,7 @@ class _TrainingScreenState extends State<TrainingScreen>
                   urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
                   subdomains: const ['a', 'b', 'c', 'd'],
                   userAgentPackageName: 'ec.edu.espe.mortenzen_martes',
+                  retinaMode: RetinaMode.isHighDensity(context),
                 ),
                 if (polylinePoints.length >= 2)
                   PolylineLayer(
