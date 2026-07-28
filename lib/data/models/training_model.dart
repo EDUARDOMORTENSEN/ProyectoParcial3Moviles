@@ -15,6 +15,8 @@ class TrainingModel extends TrainingEntity {
     super.velocidadPromedio,
     super.velocidadMaxima,
     super.rutaId,
+    super.intensidadPromedio,
+    super.girosDetectados,
   });
 
   factory TrainingModel.fromEntity(TrainingEntity entity) {
@@ -31,6 +33,8 @@ class TrainingModel extends TrainingEntity {
       velocidadPromedio: entity.velocidadPromedio,
       velocidadMaxima: entity.velocidadMaxima,
       rutaId: entity.rutaId,
+      intensidadPromedio: entity.intensidadPromedio,
+      girosDetectados: entity.girosDetectados,
     );
   }
 
@@ -49,6 +53,8 @@ class TrainingModel extends TrainingEntity {
       velocidadPromedio: (data['velocidad_promedio'] ?? 0).toDouble(),
       velocidadMaxima: (data['velocidad_maxima'] ?? 0).toDouble(),
       rutaId: data['ruta_id'],
+      intensidadPromedio: data['intensidad_promedio'],
+      girosDetectados: data['giros_detectados'],
     );
   }
 
@@ -65,6 +71,8 @@ class TrainingModel extends TrainingEntity {
       'velocidad_promedio': velocidadPromedio,
       'velocidad_maxima': velocidadMaxima,
       'ruta_id': rutaId,
+      'intensidad_promedio': intensidadPromedio,
+      'giros_detectados': girosDetectados,
     };
   }
 }

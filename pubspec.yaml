@@ -44,8 +44,17 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  mocktail: ^1.0.4
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
 
+flutter_launcher_icons:
+  android: true
+  ios: false          # tu proyecto no tiene carpeta ios
+  image_path: "assets/images/app_icon.png"
+  adaptive_icon_background: "#1A1F38"   # color de tu tema oscuro
+  adaptive_icon_foreground: "assets/images/app_icon.png"
+  
 flutter:
   uses-material-design: true
 

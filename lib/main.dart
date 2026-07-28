@@ -84,6 +84,7 @@ class MyApp extends StatelessWidget {
             rankingRepository: di.rankingRepository,
             locationService: di.locationService,
             stepCounterService: di.stepCounterService,
+            motionSensorService: di.motionSensorService,
             restApiDatasource: di.restApiDatasource,
           ),
         ),

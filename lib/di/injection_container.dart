@@ -9,6 +9,7 @@ import '../data/repositories/route_repository_impl.dart';
 import '../data/repositories/statistics_repository_impl.dart';
 import '../data/repositories/ranking_repository_impl.dart';
 import '../data/services/location_service.dart';
+import '../data/services/motion_sensor_service.dart';
 import '../data/services/step_counter_service.dart';
 import '../domain/repositories/auth_repository.dart';
 import '../domain/repositories/training_repository.dart';
@@ -50,6 +51,7 @@ class InjectionContainer {
   // Services
   late final LocationService locationService;
   late final StepCounterService stepCounterService;
+  late final MotionSensorService motionSensorService;
 
   InjectionContainer() {
     _initDatasources();
@@ -88,6 +90,10 @@ class InjectionContainer {
   void _initServices() {
     locationService = LocationService(gpsDatasource);
     stepCounterService = StepCounterService();
+    motionSensorService = MotionSensorService(
+      accelerometerDatasource,
+      gyroscopeDatasource,
+    );
   }
 }
 

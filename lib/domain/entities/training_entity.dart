@@ -11,6 +11,8 @@ class TrainingEntity {
   final double velocidadPromedio;
   final double velocidadMaxima;
   final String? rutaId;
+  final String? intensidadPromedio; // "Baja", "Media", "Alta"
+  final int? girosDetectados;
 
   const TrainingEntity({
     required this.id,
@@ -25,6 +27,8 @@ class TrainingEntity {
     this.velocidadPromedio = 0.0,
     this.velocidadMaxima = 0.0,
     this.rutaId,
+    this.intensidadPromedio,
+    this.girosDetectados,
   });
 
   TrainingEntity copyWith({
@@ -40,6 +44,8 @@ class TrainingEntity {
     double? velocidadPromedio,
     double? velocidadMaxima,
     String? rutaId,
+    String? intensidadPromedio,
+    int? girosDetectados,
   }) {
     return TrainingEntity(
       id: id ?? this.id,
@@ -54,6 +60,8 @@ class TrainingEntity {
       velocidadPromedio: velocidadPromedio ?? this.velocidadPromedio,
       velocidadMaxima: velocidadMaxima ?? this.velocidadMaxima,
       rutaId: rutaId ?? this.rutaId,
+      intensidadPromedio: intensidadPromedio ?? this.intensidadPromedio,
+      girosDetectados: girosDetectados ?? this.girosDetectados,
     );
   }
 }

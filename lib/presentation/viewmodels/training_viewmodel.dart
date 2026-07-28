@@ -8,6 +8,7 @@ import '../../domain/usecases/training/training_usecases.dart';
 import '../../domain/repositories/route_repository.dart';
 import '../../domain/repositories/ranking_repository.dart';
 import '../../data/services/location_service.dart';
+import '../../data/services/motion_sensor_service.dart';
 import '../../data/services/step_counter_service.dart';
 import '../../data/datasources/remote/rest_api_datasource.dart';
 
@@ -20,6 +21,7 @@ class TrainingViewModel extends ChangeNotifier {
   final RankingRepository _rankingRepository;
   final LocationService _locationService;
   final StepCounterService _stepCounterService;
+  final MotionSensorService _motionSensorService;
   final RestApiDatasource _restApiDatasource;
 
   TrainingState _state = TrainingState.idle;
@@ -38,6 +40,7 @@ class TrainingViewModel extends ChangeNotifier {
   Timer? _timer;
   StreamSubscription? _positionSub;
   StreamSubscription? _stepSub;
+  StreamSubscription? _motionSub;
 
   TrainingViewModel({
     required SaveTrainingUseCase saveTrainingUseCase,
@@ -46,6 +49,7 @@ class TrainingViewModel extends ChangeNotifier {
     required RankingRepository rankingRepository,
     required LocationService locationService,
     required StepCounterService stepCounterService,
+    required MotionSensorService motionSensorService,
     required RestApiDatasource restApiDatasource,
   })  : _saveTrainingUseCase = saveTrainingUseCase,
         _getTrainingHistoryUseCase = getTrainingHistoryUseCase,
@@ -53,13 +57,16 @@ class TrainingViewModel extends ChangeNotifier {
         _rankingRepository = rankingRepository,
         _locationService = locationService,
         _stepCounterService = stepCounterService,
+        _motionSensorService = motionSensorService,
         _restApiDatasource = restApiDatasource;
 
   // Getters
   TrainingState get state => _state;
   String get trainingType => _trainingType;
   int get elapsedSeconds => _elapsedSeconds;
-  int get steps => _stepCounterService.stepCount;
+  int get steps => _stepCounterService.usingHardware
+      ? _stepCounterService.stepCount
+      : _motionSensorService.estimatedSteps;
   double get distanceKm => _locationService.totalDistance / 1000;
   double get currentSpeed => _locationService.currentSpeed;
   double get maxSpeed => _locationService.maxSpeed;
@@ -81,6 +88,16 @@ class TrainingViewModel extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   List<RoutePoint> get routePoints => _locationService.routePoints;
   Stream<Position> get positionStream => _locationService.positionStream;
+
+  // Motion sensor getters
+  double get accelMagnitude => _motionSensorService.accelerationMagnitude;
+  double get gyroMagnitude => _motionSensorService.gyroscopeMagnitude;
+  String get activityIntensity => _motionSensorService.activityIntensity;
+  int get turnCount => _motionSensorService.turnCount;
+  bool get isMovingByAccel => _motionSensorService.isMovingByAccel;
+  double get orientationChangeRate => _motionSensorService.orientationChangeRate;
+  bool get usingHardwareSteps => _stepCounterService.usingHardware;
+  int get estimatedSteps => _motionSensorService.estimatedSteps;
 
   String get formattedTime {
     final hours = _elapsedSeconds ~/ 3600;
@@ -114,6 +131,9 @@ class TrainingViewModel extends ChangeNotifier {
       // Start step counter
       _stepCounterService.startCounting();
 
+      // Start motion sensors (accelerometer + gyroscope)
+      _motionSensorService.start();
+
       // Position stream fires on every fix — that's also when distance
       // and speed change in LocationService, so this single subscription
       // covers all three for the UI refresh.
@@ -144,6 +164,11 @@ class TrainingViewModel extends ChangeNotifier {
       _stepSub = _stepCounterService.stepStream.listen((_) {
         notifyListeners();
       });
+
+      // Listen to motion sensor updates
+      _motionSub = _motionSensorService.stream.listen((_) {
+        notifyListeners();
+      });
     } catch (e) {
       _errorMessage = e.toString();
       _state = TrainingState.idle;
@@ -155,6 +180,7 @@ class TrainingViewModel extends ChangeNotifier {
     _state = TrainingState.paused;
     _locationService.pause();
     _stepCounterService.pause();
+    _motionSensorService.pause();
     notifyListeners();
   }
 
@@ -162,6 +188,7 @@ class TrainingViewModel extends ChangeNotifier {
     _state = TrainingState.active;
     _locationService.resume();
     _stepCounterService.resume();
+    _motionSensorService.resume();
     notifyListeners();
   }
 
@@ -170,8 +197,10 @@ class TrainingViewModel extends ChangeNotifier {
     _timer?.cancel();
     _locationService.stopTracking();
     _stepCounterService.stopCounting();
+    _motionSensorService.stop();
     _positionSub?.cancel();
     _stepSub?.cancel();
+    _motionSub?.cancel();
     _gpsReady = false;
     notifyListeners();
 
@@ -195,6 +224,8 @@ class TrainingViewModel extends ChangeNotifier {
       velocidadPromedio: avgSpeed,
       velocidadMaxima: maxSpeed,
       rutaId: routeId,
+      intensidadPromedio: _determineAverageIntensity(),
+      girosDetectados: _motionSensorService.turnCount,
     );
 
     return training;
@@ -261,6 +292,14 @@ class TrainingViewModel extends ChangeNotifier {
     _calories = met * _weightKg * (_elapsedSeconds / 3600);
   }
 
+  String _determineAverageIntensity() {
+    final avg = _motionSensorService.averageAcceleration;
+    final deviation = (avg - 9.8).abs();
+    if (deviation < 1.5) return 'Baja';
+    if (deviation < 2.5) return 'Media';
+    return 'Alta';
+  }
+
   Future<void> _fetchWeather() async {
     try {
       final pos = currentPosition;
@@ -280,8 +319,10 @@ class TrainingViewModel extends ChangeNotifier {
     _timer?.cancel();
     _locationService.stopTracking();
     _stepCounterService.stopCounting();
+    _motionSensorService.reset();
     _positionSub?.cancel();
     _stepSub?.cancel();
+    _motionSub?.cancel();
     _weatherFetched = false;
     _gpsReady = false;
     _state = TrainingState.idle;
@@ -293,6 +334,7 @@ class TrainingViewModel extends ChangeNotifier {
     _timer?.cancel();
     _positionSub?.cancel();
     _stepSub?.cancel();
+    _motionSub?.cancel();
     super.dispose();
   }
 }

@@ -37,6 +37,20 @@ class LocationService {
     _currentSpeed = 0.0;
     _maxSpeed = 0.0;
     await ForegroundLocationController.start();
+
+    // Fetch initial position so the map shows the user immediately
+    // instead of waiting for the first stream event (which may be
+    // delayed by distanceFilter).
+    try {
+      final initial = await _gpsDatasource.getCurrentPosition();
+      if (initial.accuracy <= 10) {
+        _processPosition(initial);
+      }
+    } catch (_) {
+      // GPS not ready yet — the stream subscription below will pick
+      // up the first fix when it arrives.
+    }
+
     _startListening();
   }
 

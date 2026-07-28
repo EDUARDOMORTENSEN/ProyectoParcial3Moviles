@@ -14,14 +14,18 @@ class StepCounterService {
   StreamSubscription<StepCount>? _subscription;
   int _stepCount = 0;
   int _baseline = 0;
+  bool _hasError = false;
   final _stepController = StreamController<int>.broadcast();
 
   int get stepCount => _stepCount;
   Stream<int> get stepStream => _stepController.stream;
+  bool get usingHardware => !_hasError;
+  bool get hasError => _hasError;
 
   void startCounting() {
     _stepCount = 0;
     _baseline = 0;
+    _hasError = false;
     _startListening();
   }
 
@@ -36,9 +40,15 @@ class StepCounterService {
         _stepController.add(_stepCount);
       },
       onError: (e) {
-        // Sensor unavailable or permission denied — leave count at 0.
+        _hasError = true;
       },
     );
+  }
+
+  /// Feed estimated steps from accelerometer fallback.
+  void setFallbackSteps(int steps) {
+    _stepCount = steps;
+    _stepController.add(_stepCount);
   }
 
   void pause() {
@@ -59,6 +69,7 @@ class StepCounterService {
   void reset() {
     _stepCount = 0;
     _baseline = 0;
+    _hasError = false;
   }
 
   void dispose() {

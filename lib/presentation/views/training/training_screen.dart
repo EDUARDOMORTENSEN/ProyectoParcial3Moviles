@@ -310,7 +310,7 @@ class _TrainingScreenState extends State<TrainingScreen>
               ),
               children: [
                 TileLayer(
-                  urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                  urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
                   subdomains: const ['a', 'b', 'c', 'd'],
                   userAgentPackageName: 'ec.edu.espe.mortenzen_martes',
                   retinaMode: RetinaMode.isHighDensity(context),
@@ -354,8 +354,8 @@ class _TrainingScreenState extends State<TrainingScreen>
         Expanded(
           flex: 2,
           child: Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(20),
+            margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(24),
@@ -371,36 +371,36 @@ class _TrainingScreenState extends State<TrainingScreen>
                         color: trainingVM.state == TrainingState.paused
                             ? AppColors.warning
                             : AppColors.textPrimary,
-                        fontSize: 48,
-                        letterSpacing: 4,
+                        fontSize: 38,
+                        letterSpacing: 3,
                       ),
                 ),
                 if (!trainingVM.gpsReady &&
                     trainingVM.state == TrainingState.active) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       SizedBox(
-                        width: 14,
-                        height: 14,
+                        width: 12,
+                        height: 12,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           color: AppColors.primary.withValues(alpha: 0.8),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Text(
                         'Esperando GPS...',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: AppColors.textSecondary,
-                              fontSize: 12,
+                              fontSize: 11,
                             ),
                       ),
                     ],
                   ),
                 ],
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 // Stats row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -413,18 +413,36 @@ class _TrainingScreenState extends State<TrainingScreen>
                     ),
                     Container(
                       width: 1,
-                      height: 40,
+                      height: 34,
                       color: AppColors.glassBorder,
                     ),
-                    _buildLiveStat(
-                      Icons.directions_walk,
-                      '${trainingVM.steps}',
-                      AppStrings.steps,
-                      AppColors.accent,
+                    Column(
+                      children: [
+                        Icon(Icons.directions_walk, size: 16,
+                            color: AppColors.accent),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${trainingVM.steps}',
+                          style: TextStyle(
+                            color: AppColors.accent,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Text(
+                          trainingVM.usingHardwareSteps
+                              ? AppStrings.steps
+                              : 'est. pasos',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(fontSize: 9),
+                        ),
+                      ],
                     ),
                     Container(
                       width: 1,
-                      height: 40,
+                      height: 34,
                       color: AppColors.glassBorder,
                     ),
                     _buildLiveStat(
@@ -437,7 +455,7 @@ class _TrainingScreenState extends State<TrainingScreen>
                     ),
                     Container(
                       width: 1,
-                      height: 40,
+                      height: 34,
                       color: AppColors.glassBorder,
                     ),
                     _buildLiveStat(
@@ -448,27 +466,62 @@ class _TrainingScreenState extends State<TrainingScreen>
                     ),
                   ],
                 ),
+                const SizedBox(height: 6),
+                // Sensor indicators row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildSensorStat(
+                      Icons.sensors,
+                      trainingVM.activityIntensity,
+                      '${trainingVM.accelMagnitude.toStringAsFixed(1)} m/s²',
+                      AppColors.info,
+                    ),
+                    Container(
+                      width: 1,
+                      height: 24,
+                      color: AppColors.glassBorder,
+                    ),
+                    _buildSensorStat(
+                      Icons.autorenew,
+                      '${trainingVM.turnCount}',
+                      'giros',
+                      AppColors.warning,
+                    ),
+                    Container(
+                      width: 1,
+                      height: 24,
+                      color: AppColors.glassBorder,
+                    ),
+                    _buildSensorStat(
+                      Icons.speed,
+                      trainingVM.orientationChangeRate.toStringAsFixed(1),
+                      'rad/s',
+                      AppColors.primaryLight,
+                    ),
+                  ],
+                ),
                 const Spacer(),
                 // Stop button
                 if (trainingVM.state != TrainingState.finished)
                   GestureDetector(
                     onTap: () => _stopTraining(trainingVM),
                     child: Container(
-                      width: 64,
-                      height: 64,
+                      width: 56,
+                      height: 56,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: AppColors.error,
                         boxShadow: [
                           BoxShadow(
                             color: AppColors.error.withValues(alpha: 0.4),
-                            blurRadius: 15,
+                            blurRadius: 12,
                             spreadRadius: 2,
                           ),
                         ],
                       ),
                       child: const Icon(Icons.stop_rounded,
-                          size: 32, color: Colors.white),
+                          size: 28, color: Colors.white),
                     ),
                   ),
               ],
@@ -482,20 +535,47 @@ class _TrainingScreenState extends State<TrainingScreen>
   Widget _buildLiveStat(
       IconData icon, String value, String label, Color color) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 18, color: color),
-        const SizedBox(height: 4),
+        Icon(icon, size: 16, color: color),
+        const SizedBox(height: 2),
         Text(
           value,
           style: TextStyle(
             color: color,
             fontWeight: FontWeight.bold,
-            fontSize: 18,
+            fontSize: 16,
           ),
         ),
         Text(
           label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 10),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 9),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSensorStat(
+      IconData icon, String value, String label, Color color) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: color),
+        const SizedBox(height: 1),
+        Text(
+          value,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.bold,
+            fontSize: 11,
+          ),
+        ),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontSize: 8,
+                color: AppColors.textSecondary,
+              ),
         ),
       ],
     );

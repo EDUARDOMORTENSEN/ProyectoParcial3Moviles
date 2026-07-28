@@ -79,107 +79,125 @@ class _LoginScreenState extends State<LoginScreen>
       body: Container(
         decoration: const BoxDecoration(gradient: AppColors.darkGradient),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: 60),
-                      // Logo
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: AppColors.primaryGradient,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.3),
-                              blurRadius: 20,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.directions_run,
-                          size: 40,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        '¡Bienvenido!',
-                        style: Theme.of(context).textTheme.displayMedium,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Inicia sesión para continuar',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 48),
-                      // Email field
-                      CustomTextField(
-                        controller: _emailController,
-                        label: AppStrings.email,
-                        hint: 'ejemplo@correo.com',
-                        prefixIcon: Icons.email_outlined,
-                        keyboardType: TextInputType.emailAddress,
-                        validator: Validators.email,
-                      ),
-                      const SizedBox(height: 16),
-                      // Password field
-                      CustomTextField(
-                        controller: _passwordController,
-                        label: AppStrings.password,
-                        hint: '••••••••',
-                        prefixIcon: Icons.lock_outline,
-                        isPassword: true,
-                        validator: Validators.password,
-                      ),
-                      const SizedBox(height: 32),
-                      // Login button
-                      Consumer<AuthViewModel>(
-                        builder: (context, authVM, _) {
-                          return CustomButton(
-                            text: AppStrings.login,
-                            onPressed: authVM.isLoading ? null : _login,
-                            isLoading: authVM.isLoading,
-                            gradient: AppColors.primaryGradient,
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 24),
-                      // Register link
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            AppStrings.noAccount,
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pushNamed(context, AppRoutes.register);
-                            },
-                            child: const Text(
-                              AppStrings.register,
-                              style: TextStyle(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w600,
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: SlideTransition(
+                      position: _slideAnimation,
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Spacer(flex: 2),
+                            // Logo
+                            Center(
+                              child: Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: AppColors.primaryGradient,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.primary.withValues(alpha: 0.3),
+                                      blurRadius: 20,
+                                      spreadRadius: 2,
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.directions_run,
+                                  size: 40,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 24),
+                            Text(
+                              '¡Bienvenido!',
+                              style: Theme.of(context).textTheme.displayMedium,
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Inicia sesión para continuar',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 48),
+                            // Email field
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24),
+                              child: CustomTextField(
+                                controller: _emailController,
+                                label: AppStrings.email,
+                                hint: 'ejemplo@correo.com',
+                                prefixIcon: Icons.email_outlined,
+                                keyboardType: TextInputType.emailAddress,
+                                validator: Validators.email,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            // Password field
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24),
+                              child: CustomTextField(
+                                controller: _passwordController,
+                                label: AppStrings.password,
+                                hint: '••••••••',
+                                prefixIcon: Icons.lock_outline,
+                                isPassword: true,
+                                validator: Validators.password,
+                              ),
+                            ),
+                            const SizedBox(height: 32),
+                            // Login button
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24),
+                              child: Consumer<AuthViewModel>(
+                                builder: (context, authVM, _) {
+                                  return CustomButton(
+                                    text: AppStrings.login,
+                                    onPressed: authVM.isLoading ? null : _login,
+                                    isLoading: authVM.isLoading,
+                                    gradient: AppColors.primaryGradient,
+                                  );
+                                },
+                              ),
+                            ),
+                            const Spacer(flex: 1),
+                            // Register link
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  AppStrings.noAccount,
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pushNamed(context, AppRoutes.register);
+                                  },
+                                  child: const Text(
+                                    AppStrings.register,
+                                    style: TextStyle(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Spacer(flex: 1),
+                          ],
+                        ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
